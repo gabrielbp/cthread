@@ -13,16 +13,16 @@ int globalThreadsTid = 0;
 FILA2   filaApto;
 FILA2   filaBloqueado;
 
-int InitializeQueues();                                         /** Função auxiliar 1 **/
-void InitializeFinalContext();                                  /** Função auxiliar 2 **/
-void conclusaoThread();                                         /** Função auxiliar 3 **/
-void escalonador();                                             /** Função auxiliar 4 **/
-void InitializeMainThread();                                    /** Função auxiliar 5 **/
-void criaThreadPrincipal(ucontext_t * contextoPrincipal);       /** Função auxiliar 6 **/
-TCB_t * InitializeThread(int threadTid, int prio);              /** Função auxiliar 7 **/
-TCB_t * procuraThreadTid(FILA2 fila, int tid);                  /** Função auxiliar 8 **/
-TCB_t * procuraThreadAguardando(FILA2 fila, int tid);           /** Função auxiliar 9 **/
-int retiraThreadFila(FILA2 fila, TCB_t * thread);               /** Função auxiliar 10 **/
+int InitializeQueues();                                        /** Função auxiliar 1 **/
+void InitializeFinalContext();                                 /** Função auxiliar 2 **/
+void EndOfThread();                                            /** Função auxiliar 3 **/
+void Scheduler();                                              /** Função auxiliar 4 **/
+void InitializeMainThread();                                   /** Função auxiliar 5 **/
+void CreateMainThread(ucontext_t * contextoPrincipal);         /** Função auxiliar 6 **/
+TCB_t * InitializeThread(int threadTid, int prio);             /** Função auxiliar 7 **/
+TCB_t * SearchThreadTid(FILA2 fila, int tid);                  /** Função auxiliar 8 **/
+TCB_t * SearchThreadWaiting(FILA2 fila, int tid);              /** Função auxiliar 9 **/
+int RemoveThreadFromQueue(FILA2 fila, TCB_t * thread);         /** Função auxiliar 10 **/
 
 /*************** Estrutura de Dados auxiliar *******************************************/
 typedef struct s_WaitingTid {
@@ -131,11 +131,11 @@ void InitializeFinalContext(){
     contextoFinal->uc_stack.ss_sp = (char*) malloc(SIGSTKSZ); // Stack's beginning
     contextoFinal->uc_stack.ss_size = SIGSTKSZ; // Stack's size
 
-    makecontext(contextoFinal, (void (*) (void)) conclusaoThread, 0);
+    makecontext(contextoFinal, (void (*) (void)) EndOfThread, 0);
 }
 
 /** Função auxiliar 3 **/
-void conclusaoThread(){
+void EndOfThread(){
     TCB_t * threadAguardandoBloqueado;    
     WaitingTid_t * AuxWaitingTid;
 
@@ -144,22 +144,22 @@ void conclusaoThread(){
         
     threadExecutando->state = PROCST_TERMINO;
     
-    threadAguardandoBloqueado = procuraThreadAguardando(filaBloqueado, threadExecutando->tid);
+    threadAguardandoBloqueado = SearchThreadWaiting(filaBloqueado, threadExecutando->tid);
         
     if(threadAguardandoBloqueado != NULL){
         //threadAguardandoBloqueado->data = AuxWaitingTid;
         threadAguardandoBloqueado->state = PROCST_APTO;
         //retira de bloqueado
-        retiraThreadFila(filaBloqueado,threadAguardandoBloqueado);
+        RemoveThreadFromQueue(filaBloqueado,threadAguardandoBloqueado);
         //coloca em apto
         AppendFila2(&filaApto, (void *)(threadAguardandoBloqueado));       
     }      
     
-    escalonador();
+    Scheduler();
 }
 
 /** Função auxiliar 4 **/
-void escalonador(){
+void Scheduler(){
     int trocaContexto = 0;
     int testeFila = 1;
 
@@ -172,7 +172,7 @@ void escalonador(){
         
         if (testeFila)
         {
-            printf ("Erro: escalonador - fila bloqueado\n");
+            printf ("Erro: Scheduler - fila bloqueado\n");
         }
         
         testeFila = 1;
@@ -185,7 +185,7 @@ void escalonador(){
         
         if (testeFila)
         {
-            printf ("Erro: escalonador - fila apto\n");
+            printf ("Erro: Scheduler - fila apto\n");
         }
         
         testeFila = 1;
@@ -207,7 +207,7 @@ void escalonador(){
         
         //posiciona o iterador no primeiro elemento da fila - FILA2
         if (testeFila) {
-            printf ("Erro: escalonador - FirstFila2\n");
+            printf ("Erro: Scheduler - FirstFila2\n");
         }
 
         threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaApto);
@@ -230,7 +230,7 @@ void InitializeMainThread(){
     
     getcontext(contextoPrincipal);
 
-    ccreate((void*)criaThreadPrincipal, contextoPrincipal, 0);
+    ccreate((void*)CreateMainThread, contextoPrincipal, 0);
 
     testeFila = FirstFila2(&filaApto);
         
@@ -248,7 +248,7 @@ void InitializeMainThread(){
 }
 
 /** Função auxiliar 6 **/
-void criaThreadPrincipal(ucontext_t * contextoPrincipal){
+void CreateMainThread(ucontext_t * contextoPrincipal){
     
     threadExecutando->context = *contextoPrincipal;
     setcontext(&(threadExecutando->context));
@@ -285,7 +285,7 @@ TCB_t * InitializeThread(int threadTid, int prio){
 }
 
 /** Função auxiliar 8 **/
-TCB_t * procuraThreadTid(FILA2 fila, int tid){
+TCB_t * SearchThreadTid(FILA2 fila, int tid){
     TCB_t * thread;
     int testeFila =1;
     
@@ -293,7 +293,7 @@ TCB_t * procuraThreadTid(FILA2 fila, int tid){
     testeFila = FirstFila2(&fila);
     
     if (testeFila) {
-        //printf ("Erro: procuraThreadTid - FirstFila2 fila vazia\n");
+        //printf ("Erro: SearchThreadTid - FirstFila2 fila vazia\n");
         return NULL;
     }
     
@@ -322,7 +322,7 @@ TCB_t * procuraThreadTid(FILA2 fila, int tid){
 }
 
 /** Função auxiliar 9 **/
-TCB_t * procuraThreadAguardando(FILA2 fila, int tid){
+TCB_t * SearchThreadWaiting(FILA2 fila, int tid){
     TCB_t * thread;
     int testeFila = 1;
             
@@ -330,7 +330,7 @@ TCB_t * procuraThreadAguardando(FILA2 fila, int tid){
     testeFila = FirstFila2(&fila);
     
     if (testeFila) {
-        //printf ("Erro: procuraThreadAguardando - FirstFila2 fila vazia\n");
+        //printf ("Erro: SearchThreadWaiting - FirstFila2 fila vazia\n");
         return NULL;
     }
     
@@ -362,7 +362,7 @@ TCB_t * procuraThreadAguardando(FILA2 fila, int tid){
 /** Ret:    ==0, se conseguiu
     !=0, caso contrário (erro) **/
     
-int retiraThreadFila(FILA2 fila, TCB_t * thread){   
+int RemoveThreadFromQueue(FILA2 fila, TCB_t * thread){   
     TCB_t * threadAux;
     int testeFila =1;
     int resultado = -1;
