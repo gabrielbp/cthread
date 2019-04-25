@@ -11,5 +11,5 @@ int main(int argc, char *argv[]) {
 
 	id0 = cidentify(name, tam);
 
-	printf("Resultado = %d\n%s\n", id0, name);
+	printf("Result = %d\n%s\n", id0, name);
 }

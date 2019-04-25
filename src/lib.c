@@ -76,7 +76,32 @@ int cyield(void) {
 }
 
 int cjoin(int tid) {
-	return -1;
+	int testeFila = 1;
+    TCB_t * threadFilaApto;
+    TCB_t * threadFilaBloqueado;   
+
+    testeFila = FirstFila2(&filaApto);
+        
+    //posiciona o iterador no primeiro elemento da fila - FILA2
+    if (testeFila) {
+        printf ("Erro: cjoin - FirstFila2 fila vazia\n");
+        return -1;
+    }
+    
+    threadFilaApto = procuraThreadTid(filaApto, tid);    
+    threadFilaBloqueado = procuraThreadTid(filaBloqueado, tid);
+    
+    
+    if(threadFilaApto == NULL && threadFilaBloqueado == NULL){
+        return -1;
+    }
+        
+    if(procuraThreadAguardando(filaBloqueado, tid) != NULL)
+        return -1;
+
+    threadExecutando->state = PROCST_BLOQ;    
+    escalonador();
+    return 0;
 }
 
 int csem_init(csem_t *sem, int count) {
