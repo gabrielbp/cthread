@@ -119,32 +119,20 @@ int cjoin(int tid) {
         return -1;
     }
     
-    threadFilaApto = procuraThreadTid(filaApto, tid);    
-    threadFilaBloqueado = procuraThreadTid(filaBloqueado, tid);
-    
+    threadFilaApto = SearchThreadTid(filaApto, tid);    
+    threadFilaBloqueado = SearchThreadTid(filaBloqueado, tid);    
     
     if(threadFilaApto == NULL && threadFilaBloqueado == NULL){
         return -1;
     }
         
-    if(procuraThreadAguardando(filaBloqueado, tid) != NULL)
+    if(SearchThreadWaiting(filaBloqueado, tid) != NULL){
         return -1;
+    }
 
     threadExecutando->state = PROCST_BLOQ;    
-    escalonador();
+    Scheduler();    
     return 0;
-}
-
-int csem_init(csem_t *sem, int count) {
-	return -1;
-}
-
-int cwait(csem_t *sem) {
-	return -1;
-}
-
-int csignal(csem_t *sem) {
-	return -1;
 }
 
 int cidentify (char *name, int size) {	

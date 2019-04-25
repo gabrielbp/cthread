@@ -88,19 +88,19 @@ int cjoin(int tid) {
         return -1;
     }
     
-    threadFilaApto = procuraThreadTid(filaApto, tid);    
-    threadFilaBloqueado = procuraThreadTid(filaBloqueado, tid);
-    
+    threadFilaApto = SearchThreadTid(filaApto, tid);    
+    threadFilaBloqueado = SearchThreadTid(filaBloqueado, tid);    
     
     if(threadFilaApto == NULL && threadFilaBloqueado == NULL){
         return -1;
     }
         
-    if(procuraThreadAguardando(filaBloqueado, tid) != NULL)
+    if(SearchThreadWaiting(filaBloqueado, tid) != NULL){
         return -1;
+    }
 
     threadExecutando->state = PROCST_BLOQ;    
-    escalonador();
+    Scheduler();    
     return 0;
 }
 
