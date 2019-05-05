@@ -1,3 +1,8 @@
+/* 
+ * Desenvolvimento de um escalonador COM PRIORIDADES E NÃO PREEMPTIVO
+ * Política de Múltiplas filas SEM realimentação (cada fila - FIFO)
+ */
+
 #include <stdlib.h>
 #include <ucontext.h>
 #include <stdio.h>
@@ -6,11 +11,19 @@
 #include "../include/cthread.h"
 #include "../include/cdata.h"
 
+#define ALGO_DE_ERRADO -1
+#define TUDO_CERTO 0
+#define ERRO_INSERCAO_FILA -1
+
+ucontext_t context_yield = NULL;
 ucontext_t *contextoFinal = NULL;
 TCB_t *threadExecutando = NULL;
 int globalThreadsTid = 0;
 
-FILA2   filaApto;
+FILA2   filaApto; // contém todos os aptos   
+FILA2   filaAptoBaixaPrioridade; // apenas os aptos com prioridade igual a 2 
+FILA2   filaAptoMediaPrioridade; // apenas os aptos com prioridade igual a 1 
+FILA2   filaAptoAltaPrioridade; // apenas os aptos com prioridade igual a 0
 FILA2   filaBloqueado;
 
 int InitializeQueues();                                        /** Função auxiliar 1 **/
@@ -52,13 +65,30 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
     
     makecontext(&(thread->context), (void (*) (void)) start, 1, arg);
     
-    testeFila = AppendFila2(&filaApto, (void *)(thread));
-        
-    if (testeFila)
-    {
-        printf ("Erro: ccreate - fila apto\n");
+    // COLOCAR O SWITCH???	
+     switch(prio){
+    case 0:
+        testeFila = AppendFila2(&filaAptoAltaPrioridade,(void*)(thread));
+        break;
+    case 1:
+        testeFila = AppendFila2(&filaAptoMediaPrioridade,(void*)(thread));
+        break;
+    case 2:
+        testeFila = AppendFila2(&filaAptoBaixaPrioridade,(void*)(thread));
+        break;
+    default:
         return -1;
-    }
+        break;
+    }	
+	
+	
+    //ideia para substituir as 5 linhas abaixo --> colocar o if: 
+	//if(AppendFila2(&filaApto, (void *)(thread)) != 0) return ERRO_INSERCAO_FILA;	
+    testeFila = AppendFila2(&filaApto, (void *)(thread)); //LINHA 1    
+    if (testeFila){ //linha 2 
+        printf ("Erro: ccreate - fila apto\n"); //linha 3
+        return -1; //linha 4
+    }//linha 5
     
     testeFila = 1;    
 
@@ -67,8 +97,24 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
     return (*thread).tid;
 }
 
+/*
+ * Altera a prioridade de uma thread dado o seu tid e sua nova prioridade. 
+ * tid = sempre NULL (especificação 2019.01)
+ * prio = 0,1,2 
+ */
 int csetprio(int tid, int prio) {
-	return -1;
+    if(prio >= 0 && prio<= 2){ //prioridades válidas
+         printf("Processo %d: \n 
+                     \t prioridade anterior: %d \n 
+                     \t nova prioridade: %d \n", threadExecutando->tid, threadExecutando->prio, prio);
+
+         tid = NULL;
+         threadExecutando->prio = prio; 
+
+         return TUDO_CERTO; // executou corretamente
+    }
+        
+	return ALGO_DEU_ERRADO; 
 }
 
 int cyield(void) {
@@ -108,8 +154,28 @@ int csem_init(csem_t *sem, int count) {
 	return -1;
 }
 
+/*
+ * Solicitação de recurso
+ */
 int cwait(csem_t *sem) {
-	return -1;
+
+    //thread colocada no estado bloqueado
+    if(sem->count <= 0){
+        threadExecutando->state = PROCST_BLOQ;
+        if(AppendFila2(&filaBloqueado, (void*)threadExecutando) != 0) 
+            return ERRO_INSERCAO_FILA;
+        if(AppendFila2(sem->fila, (void *)threadExecutando->tid) != 0) 
+            return ERRO_INSERCAO_FILA;
+        sem->count--; //a cada chamada de cwait decrementa 
+        swapcontext(&threadExecutando->context, &context_yield);
+        return TUDO_CERTO;
+
+    }else{ // recurso está livre thread continua execução normalmente
+        sem->count--; //a cada chamada de cwait decrementa 
+        return TUDO_CERTO;
+    }
+
+	return ALGO_DEU_ERRADO;
 }
 
 int csignal(csem_t *sem) {
@@ -117,7 +183,7 @@ int csignal(csem_t *sem) {
 }
 
 int cidentify (char *name, int size) {	
-	strncpy(name, "Gabriel Barros de Paula - 240427 - Carine - 000000 - Henrique - 000000", size);
+	strncpy(name, "Gabriel Barros de Paula - 240427 - Carine Bertagnolli Bathaglini- 274715 - Henrique da Silva Barboza  - 272730", size);
     return 0;
 }
 
