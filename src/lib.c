@@ -16,6 +16,22 @@
 #define ERRO_CRIACAO_FILA -1
 #define ERRO_INSERCAO_FILA -1
 
+/* - Strings - */
+//Criações
+#define ERRO_CRIACAO_FILA_APTOS "ERROR: Erro ao criar a fila dos aptos.\n"
+#define ERRO_CRIACAO_FILA_APTOS_BAIXA_PRIORIDADE "ERROR: Erro ao criar a fila dos aptos de baixa prioridade.\n"
+#define ERRO_CRIACAO_FILA_APTOS_MEDIA_PRIORIDADE "ERROR: Erro ao criar a fila dos aptos de media prioridade.\n"
+#define ERRO_CRIACAO_FILA_APTOS_ALTA_PRIORIDADE "ERROR: Erro ao criar a fila dos aptos de alta prioridade.\n"
+#define ERRO_CRIACAO_FILA_BLOQUEADOS "ERROR: Erro ao criar a fila dos bloqueados.\n"
+
+//Inserções
+#define ERRO_INSERCAO_FILA_APTOS "ERROR: Erro ao inserir na fila dos aptos.\n"
+#define ERRO_INSERCAO_FILA_APTOS_BAIXA_PRIORIDADE "ERROR: Erro ao inserir na fila dos aptos de baixa prioridade.\n"
+#define ERRO_INSERCAO_FILA_APTOS_MEDIA_PRIORIDADE "ERROR: Erro ao inserir na fila dos aptos de media prioridade.\n"
+#define ERRO_INSERCAO_FILA_APTOS_ALTA_PRIORIDADE "ERROR: Erro ao inserir na fila dos aptos de alta prioridade.\n"
+#define ERRO_INSERCAO_FILA_BLOQUEADOS "ERROR: Erro ao inserir na fila dos bloqueados.\n"
+#define ERRO_INSERCAO_FILA_SEMAFORO "ERROR: Erro ao inserir na fila do semaforo.\n"
+
 
 ucontext_t context_yield = NULL;
 ucontext_t *contextoFinal = NULL;
@@ -71,19 +87,19 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
      switch(prio){
 	    case 0:
 		if(AppendFila2(&filaAptoAltaPrioridade,(void*)(thread)) != 0){
-		  printf("ERROR: Erro ao inserir na fila de aptos de ALTA prioridade.\n");				
+		  printf(ERRO_INSERCAO_FILA_APTOS_ALTA_PRIORIDADE);				
 		  return ERRO_INSERCAO_FILA;
 		}
 		break;
 	    case 1:
 		if(AppendFila2(&filaAptoMediaPrioridade,(void*)(thread)) != 0){
-		  printf("ERROR: Erro ao inserir na fila de aptos de MEDIA prioridade.\n");				
+		  printf(ERRO_INSERCAO_FILA_APTOS_MEDIA_PRIORIDADE);				
 		  return ERRO_INSERCAO_FILA;
 		}
 		break;
 	    case 2:
 		if( AppendFila2(&filaAptoBaixaPrioridade,(void*)(thread)) != 0){
-		   printf("ERROR: Erro ao inserir na fila de aptos de BAIXA prioridade.\n");				
+		   printf(ERRO_INSERCAO_FILA_APTOS_BAIXA_PRIORIDADE);				
 		   return ERRO_INSERCAO_FILA;
 		}
 		break;
@@ -173,10 +189,14 @@ int cwait(csem_t *sem) {
     //thread colocada no estado bloqueado
     if(sem->count <= 0){
         threadExecutando->state = PROCST_BLOQ;
-        if(AppendFila2(&filaBloqueado, (void*)threadExecutando) != 0) 
-            return ERRO_INSERCAO_FILA;
-        if(AppendFila2(sem->fila, (void *)threadExecutando->tid) != 0) 
-            return ERRO_INSERCAO_FILA;
+        if(AppendFila2(&filaBloqueado, (void*)threadExecutando) != 0){ 
+            printf(ERRO_INSERCAO_FILA_BLOQUEADOS);
+	    return ERRO_INSERCAO_FILA;
+	}
+        if(AppendFila2(sem->fila, (void *)threadExecutando->tid) != 0){ 
+            printf(ERRO_INSERCAO_FILA_SEMAFORO); 
+	   return ERRO_INSERCAO_FILA;
+	}
         sem->count--; //a cada chamada de cwait decrementa 
         swapcontext(&threadExecutando->context, &context_yield);
         return TUDO_CERTO;
@@ -218,19 +238,19 @@ int InitializeQueues(){
     
     // BAIXA PRIORIDADE
      if(CreateFila2(&filaAptoBaixaPrioridade) != 0) {
-	 printf("ERROR: Erro ao criar a fila de aptos de BAIXA prioridade.\n");
+	 printf(ERRO_CRIACAO_FILA_APTOS_BAIXA_PRIORIDADE);
 	 return ERRO_CRIACAO_FILA;
      }
 
     //MEDIA PRIORIDADE
      if(CreateFila2(&filaAptoMediaPrioridade) != 0){
-	printf("ERROR: Erro ao criar a fila de aptos de MEDIA prioridade.\n"); 
+	printf(ERRO_CRIACAO_FILA_APTOS_MEDIA_PRIORIDADE); 
 	return ERRO_CRIACAO_FILA;
      }
 
     //ALTA PRIORIDADE
      if(CreateFila2(&filaAptoAltaPrioridade)!= 0){
-	printf("ERROR: Erro ao criar a fila de aptos de ALTA prioridade.\n");      
+	printf(ERRO_CRIACAO_FILA_APTOS_ALTA_PRIORIDADE);      
 	return ERRO_CRIACAO_FILA;
      }
     
