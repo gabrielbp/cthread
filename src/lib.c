@@ -69,18 +69,27 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
     
     // COLOCAR O SWITCH???	
      switch(prio){
-    case 0:
-        testeFila = AppendFila2(&filaAptoAltaPrioridade,(void*)(thread));
-        break;
-    case 1:
-        testeFila = AppendFila2(&filaAptoMediaPrioridade,(void*)(thread));
-        break;
-    case 2:
-        testeFila = AppendFila2(&filaAptoBaixaPrioridade,(void*)(thread));
-        break;
-    default:
-        return -1;
-        break;
+	    case 0:
+		if(AppendFila2(&filaAptoAltaPrioridade,(void*)(thread)) != 0){
+		  printf("ERROR: Erro ao inserir na fila de aptos de ALTA prioridade.\n");				
+		  return ERRO_INSERCAO_FILA;
+		}
+		break;
+	    case 1:
+		if(AppendFila2(&filaAptoMediaPrioridade,(void*)(thread)) != 0){
+		  printf("ERROR: Erro ao inserir na fila de aptos de MEDIA prioridade.\n");				
+		  return ERRO_INSERCAO_FILA;
+		}
+		break;
+	    case 2:
+		if( AppendFila2(&filaAptoBaixaPrioridade,(void*)(thread)) != 0){
+		   printf("ERROR: Erro ao inserir na fila de aptos de BAIXA prioridade.\n");				
+		   return ERRO_INSERCAO_FILA;
+		}
+		break;
+	    default:
+		return -1;
+		break;
     }	
 	
 	
