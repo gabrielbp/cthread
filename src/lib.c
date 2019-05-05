@@ -13,7 +13,9 @@
 
 #define ALGO_DE_ERRADO -1
 #define TUDO_CERTO 0
+#define ERRO_CRIACAO_FILA -1
 #define ERRO_INSERCAO_FILA -1
+
 
 ucontext_t context_yield = NULL;
 ucontext_t *contextoFinal = NULL;
@@ -196,11 +198,32 @@ int cidentify (char *name, int size) {
 int InitializeQueues(){
     int testeFila = 1;
 
+   /** Filas de prioridades dos Aptos **/
+
+    //TODOS OS APTOS
     testeFila = CreateFila2(&filaApto);
 
     if (testeFila) {
         return -1;
     }
+    
+    // BAIXA PRIORIDADE
+     if(CreateFila2(&filaAptoBaixaPrioridade) != 0) {
+	 printf("ERROR: Erro ao criar a fila de aptos de BAIXA prioridade.\n");
+	 return ERRO_CRIACAO_FILA;
+     }
+
+    //MEDIA PRIORIDADE
+     if(CreateFila2(&filaAptoMediaPrioridade) != 0){
+	printf("ERROR: Erro ao criar a fila de aptos de MEDIA prioridade.\n"); 
+	return ERRO_CRIACAO_FILA;
+     }
+
+    //ALTA PRIORIDADE
+     if(CreateFila2(&filaAptoAltaPrioridade)!= 0){
+	printf("ERROR: Erro ao criar a fila de aptos de ALTA prioridade.\n");      
+	return ERRO_CRIACAO_FILA;
+     }
     
     testeFila = CreateFila2(&filaBloqueado);
 
