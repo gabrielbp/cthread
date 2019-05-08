@@ -33,7 +33,7 @@
 #define STRING_ERRO_INSERCAO_FILA_SEMAFORO "ERROR: Erro ao inserir na fila do semaforo.\n"
 
 
-ucontext_t context_yield = NULL;
+ucontext_t context_yield;
 ucontext_t *contextoFinal = NULL;
 TCB_t *threadExecutando = NULL;
 int globalThreadsTid = 0;
@@ -147,8 +147,9 @@ int csetprio(int tid, int prio) {
 }
 
 int cyield(void) {
-	int testefila;
+	 TCB_t *yieldingThread;
 
+    int testeFila;
 
 	if(!firstThread){
         InitializeQueues();
@@ -162,10 +163,39 @@ int cyield(void) {
         return -1;
     }
 
-    threadExecutando->state = PROCST_APTO;
-    Scheduler();
+    yieldingThread = threadExecutando;
+    yieldingThread->state= PROCST_APTO;
+
+    switch(threadExecutando->prio){
+	    case 0:
+		testeFila = AppendFila2(&filaAptoAltaPrioridade, (void *)(threadExecutando));
+
+		break;
+	    case 1:
+		testeFila = AppendFila2(&filaAptoMediaPrioridade, (void *)(threadExecutando));
+
+		break;
+	    case 2:
+		testeFila = AppendFila2(&filaAptoBaixaPrioridade, (void *)(threadExecutando));
+
+		break;
+	    default:
+		return -1;
+		break;
+    }
+
+    if(testeFila){
+        printf("ERRO Inserindo fila aptos cyield\n");
+        return -1;
+    }
+    else
+    {
+        printf("colocou de volta na baixa = %d\n", threadExecutando->tid);
+    }
 
 
+    threadExecutando= 0;
+    swapcontext(&yieldingThread->context, &context_yield);
 	return 0;
 }
 
@@ -252,6 +282,34 @@ int cidentify (char *name, int size) {
 
 /**************** Funções auxiliares ***************************************************/
 
+void *scheduleAfterYield(){
+
+    TCB_t *threadEscalonada = NULL;
+
+    if( (FirstFila2(&filaAptoAltaPrioridade)) == 0) {  //Se fila de alta prioridade não está vazia
+           threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoAltaPrioridade); //Pega Primeiro
+           DeleteAtIteratorFila2(&filaAptoAltaPrioridade);  //Deleta ele da fila de aptos
+
+           }
+        else if((FirstFila2(&filaAptoMediaPrioridade)) == 0){
+            threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoMediaPrioridade); //Pega primeiro
+            DeleteAtIteratorFila2(&filaAptoMediaPrioridade);
+            }
+        else if((FirstFila2(&filaAptoBaixaPrioridade)) == 0){
+            threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoBaixaPrioridade);
+            DeleteAtIteratorFila2(&filaAptoBaixaPrioridade);
+            printf("pegou da baixa, id = %d \n", threadEscalonada->tid);
+            }
+    if(threadEscalonada==NULL)
+    printf("ERRO - ao selecionar thread dos aptos\n");
+
+    threadExecutando = threadEscalonada;
+    threadExecutando->state = PROCST_EXEC;
+    setcontext(&threadExecutando->context);
+
+}
+
+
 /** Função auxiliar 1
 *** Função: Inicializa as filas - FILA2
 *** Ret: == 0, se conseguiu
@@ -307,6 +365,13 @@ void InitializeFinalContext(){
     contextoFinal->uc_stack.ss_size = SIGSTKSZ; // Stack's size
 
     makecontext(contextoFinal, (void (*) (void)) EndOfThread, 0);
+
+    //Inicia contexto de yield a ser utilizado na cyeld
+    getcontext(&context_yield);
+    context_yield.uc_link = NULL; // Terminate context
+    context_yield.uc_stack.ss_sp = (char*) malloc(SIGSTKSZ); // Stack's beginning
+    context_yield.uc_stack.ss_size = SIGSTKSZ; // Stack's size
+    makecontext(&context_yield, (void (*) (void)) scheduleAfterYield, 0);
 }
 
 /** Função auxiliar 3 **/
@@ -358,18 +423,28 @@ void Scheduler(){
     }
     else if(threadExecutando->state == PROCST_APTO)
     {
-        yeldingThread = threadExecutando;
+       yeldingThread = threadExecutando;
 
-        testeFila = AppendFila2(&filaApto, (void *)(threadExecutando));
+        switch(threadExecutando->prio){
+	    case 0:
+		testeFila = AppendFila2(&filaAptoAltaPrioridade, (void *)(threadExecutando));
 
-        if (testeFila)
-        {
-            printf ("Erro: Scheduler - fila apto\n");
-        }
+		break;
+	    case 1:
+		testeFila = AppendFila2(&filaAptoMediaPrioridade, (void *)(threadExecutando));
 
-        testeFila = 1;
+		break;
+	    case 2:
+		testeFila = AppendFila2(&filaAptoBaixaPrioridade, (void *)(threadExecutando));
 
-        getcontext(&(threadExecutando->context));
+		break;
+	    default:
+		return -1;
+		break;
+    }
+        testeFila=1
+
+       // getcontext(&(threadExecutando->context));
     }
     else if(threadExecutando->state == PROCST_TERMINO)
     {
@@ -389,18 +464,32 @@ void Scheduler(){
             printf ("Erro: Scheduler - FirstFila2\n");
         }
 
-        threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaApto);
+        //I >THINK< THE PRIORITIES SHOULD BE LIKE THIS
+       if( (FirstFila2(&filaAptoAltaPrioridade)) == 0)
+           { threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoAltaPrioridade);
+
+           }
+        else if((FirstFila2(&filaAptoMediaPrioridade)) == 0)
+            {threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoMediaPrioridade);
+
+            }
+        else
+            {threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoBaixaPrioridade);
+
+            }
 
         // Lista vazia
-        if(threadEscalonada == NULL)
+        if(threadEscalonada == NULL){
+            printf(("ALL QUEUES EMPTY /n /n"));
             return;
+            }
 
         threadExecutando = threadEscalonada;
         threadExecutando->state = PROCST_EXEC;
 
-        if(yeldingThread != NULL)
+       /* if(yeldingThread != NULL)
             swap(yeldingThread->context,threadEscalonada->context);
-        else
+        else */
         setcontext(&(threadExecutando->context));
     }
 }
@@ -412,9 +501,9 @@ void InitializeMainThread(){
 
     getcontext(contextoPrincipal);
 
-    ccreate((void*)CreateMainThread, contextoPrincipal, 0);
+      ccreate((void*)CreateMainThread, contextoPrincipal, 2)
 
-    testeFila = FirstFila2(&filaApto);
+     testeFila = FirstFila2(&filaAptoBaixaPrioridade);
 
     //posiciona o iterador no primeiro elemento da fila - FILA2
     if (testeFila) {
@@ -422,7 +511,11 @@ void InitializeMainThread(){
     }
 
     //coloca em execução contexto principal
-    threadExecutando = (TCB_t *)GetAtIteratorFila2(&filaApto);
+    threadExecutando = (TCB_t *)GetAtIteratorFila2(&filaAptoBaixaPrioridade);
+ //   printf("executando %d \n",threadExecutando->tid);
+    DeleteAtIteratorFila2(&filaAptoBaixaPrioridade);
+    //printf("Deletou da baixa\n");
+    threadExecutando->state= PROCST_EXEC;
 
     // Lista vazia -> pegar da lista: filaAptoSuspenso ou filaBloqueado ou filaBloqueadoSuspenso
     if(threadExecutando == NULL)
