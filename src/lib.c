@@ -11,7 +11,7 @@
 #include "../include/cthread.h"
 #include "../include/cdata.h"
 
-#define ALGO_DE_ERRADO -1
+#define ALGO_DEU_ERRADO -1
 #define TUDO_CERTO 0
 #define ERRO_CRIACAO_FILA -1
 #define ERRO_INSERCAO_FILA -1
