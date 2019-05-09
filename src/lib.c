@@ -16,6 +16,10 @@
 #define ERRO_CRIACAO_FILA -1
 #define ERRO_INSERCAO_FILA -1
 
+#define ALTA_PRIORIDADE 0
+#define MEDIA_PRIORIDADE 1
+#define BAIXA_PRIORIDADE 2
+
 /* - Strings - */
 //Criações
 #define STRING_ERRO_CRIACAO_FILA_APTOS "ERROR: Erro ao criar a fila dos aptos.\n"
@@ -23,6 +27,7 @@
 #define STRING_ERRO_CRIACAO_FILA_APTOS_MEDIA_PRIORIDADE "ERROR: Erro ao criar a fila dos aptos de media prioridade.\n"
 #define STRING_ERRO_CRIACAO_FILA_APTOS_ALTA_PRIORIDADE "ERROR: Erro ao criar a fila dos aptos de alta prioridade.\n"
 #define STRING_ERRO_CRIACAO_FILA_BLOQUEADOS "ERROR: Erro ao criar a fila dos bloqueados.\n"
+#define STRING_ERRO_AO_DELETAR_DA_FILA "ERROR: Erro ao deletar da fila."
 
 //Inserções
 #define STRING_ERRO_INSERCAO_FILA_APTOS "ERROR: Erro ao inserir na fila dos aptos.\n"
@@ -132,10 +137,6 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
  */
 int csetprio(int tid, int prio) {
     if(prio >= 0 && prio<= 2){ //prioridades válidas
-         printf("Processo %d: \n
-                     \t prioridade anterior: %d \n
-                     \t nova prioridade: %d \n", threadExecutando->tid, threadExecutando->prio, prio);
-
          tid = NULL;
          threadExecutando->prio = prio;
 
@@ -271,7 +272,71 @@ int cwait(csem_t *sem) {
 }
 
 int csignal(csem_t *sem) {
-	return -1;
+    if(sem != NULL){      
+        if(FirstFila2(sem->fila) != 0 && NextFila2(sem->fila) != -NXTFILA_VAZIA){ //ERRO: porque não pegou o primeiro e a fila não é vazia
+            return ALGO_DEU_ERRADO;
+        }else if (FirstFila2(sem->fila) != 0 && NextFila2(sem->fila) == -NXTFILA_VAZIA){ //CERTO: não pegou o primeiro pq a fila e vazia
+            return TUDO_CERTO;
+        }else{ //conseguiu pegar o primeiro 
+            TCB_t *thread = NULL;
+            thread = GetAtAntIteratorFila2(sem->fila); 
+            if(thread == NULL) return ALGO_DEU_ERRADO;
+            
+            
+            for(int i=ALTA_PRIORIDADE; i<=BAIXA_PRIORIDADE; i++){ //percorre todas as prioridades
+                int flag =0;
+                FirstFila2(sem->fila);
+                while(flag == 0 && NextFila2(sem->fila) != -NXTFILA_ENDQUEUE){
+                    
+                    thread = (TCB_t*) GetAtAntIteratorFila2(sem->fila);
+                    if(thread->prio == i) flag = 1;
+                }
+
+                if(flag == 1){ //encontrou de alta prioridade
+
+                    thread->state = PROCST_APTO;
+                    if(AppendFila2(&filaApto), thread) != 0){ //insere na fila nque tem todos os aptos
+                        printf(STRING_ERRO_INSERCAO_FILA_APTOS);
+                        return ERRO_INSERCAO_FILA;
+                    }
+
+                    switch(i){
+                        case ALTA_PRIORIDADE:
+                                if(AppendFila2(&filaAptoAltaPrioridade), thread) != 0){
+                                    printf(STRING_ERRO_INSERCAO_FILA_APTOS_ALTA_PRIORIDADE);
+                                    return ERRO_INSERCAO_FILA;
+                                }
+                                break;
+                        case MEDIA_PRIORIDADE:
+                                if(AppendFila2(&filaAptoMediaPrioridade), thread) != 0){
+                                    printf(STRING_ERRO_INSERCAO_FILA_APTOS_MEDIA_PRIORIDADE);
+                                    return ERRO_INSERCAO_FILA;
+                                }
+                                break;
+                        case BAIXA_PRIORIDADE:
+                                if(AppendFila2(&filaAptoBaixaPrioridade), thread) != 0){
+                                    printf(STRING_ERRO_INSERCAO_FILA_APTOS_BAIXA_PRIORIDADE);
+                                    return ERRO_INSERCAO_FILA;
+                                }
+                                break;
+                        default:
+                                break;
+                                return ALGO_DEU_ERRADO;
+                        
+                    }
+
+                    if(DeleteAtIteratorFila2(sem->fila) !=0){
+                        printf(STRING_ERRO_AO_DELETAR_DA_FILA);
+                        return ERRO_AO_DELETAR_DA_FILA;
+                    }
+                    sem->count++;
+                    return TUDO_CERTO;
+                }
+            }
+
+        }
+    }
+	return ALGO_DEU_ERRADO;
 }
 
 int cidentify (char *name, int size) {
