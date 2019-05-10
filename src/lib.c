@@ -143,7 +143,7 @@ int csetprio(int tid, int prio) {
          //tid = NULL;
         if(threadExecutando->tid == tid){            
             threadExecutando->prio = prio;
-            
+
             return TUDO_CERTO; // executou corretamente
         }         
     }
@@ -515,7 +515,7 @@ void Scheduler(){
     }
     else if(threadExecutando->state == PROCST_TERMINO)
     {
-        free(&(threadExecutando->context));
+        //free(&(threadExecutando->context));
         free(threadExecutando);
         threadExecutando = NULL;
     }
@@ -615,7 +615,7 @@ TCB_t * InitializeThread(int threadTid, int prio){
     AuxWaitingTid = (WaitingTid_t *) malloc(sizeof(WaitingTid_t));
     AuxWaitingTid->waitingTid = -1;
 
-    thread->context = *(ucontext_t *) malloc(sizeof(ucontext_t));
+    //thread->context = *(ucontext_t *) malloc(sizeof(ucontext_t));
 
     if (thread == 0)
         return NULL;

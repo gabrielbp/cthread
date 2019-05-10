@@ -67,45 +67,51 @@ typedef struct s_WaitingTid {
     int waitingTid;
 } WaitingTid_t;
 
-/******************** FUNÇÕES PRINCIPAIS *************************************/
-void* func0(void *arg) {
-	printf("Eu sou a thread ID0 imprimindo antes de dar yeld\n");
-	cyield();
+csem_t semaforo;
 
-	printf("Eu sou a thread ID0 imprimindo depois de dar yeld\n");
-    //cyield();
-    printf("what is wrong\n");
-	return 0;
+void* func00()
+{    
+    cwait(&semaforo);
+    printf("FUNC00 \n Thread01 - Contador do semaforo após solicitação de recurso: %d.\n", semaforo.count);
+    csignal(&semaforo);
+    printf("Contador do semaforo após liberação de recurso: %d.\n", semaforo.count);
+    return NULL;
 }
 
-void *func1(void *arg) {
-   printf("Eu sou a thread ID1 imprimindo antes de dar yeld\n");
-   cyield();
-   printf("Eu sou a thread ID1 imprimindo depois de dar yeld\n");
-   //cyield();
-   printf("what is wrong\n");
-   return 0;
-}
-
-int main(int argc, char *argv[]) {
-
-	int	id0, id1;
-	int tam = 25;
-	int i, testing;
-	char *name = (char *)malloc(tam * sizeof(char));
-
-	id0 = ccreate(func0, (void *)&i, 2);
-    id1 = ccreate(func1, (void *) &i, 2);
-
-    testing = cyield();
-
-	printf("Eu sou a main após a criação de ID0 e ID1 com Yeld, e agora darei a palavra à elas novamente = %d\n",testing);
-
-    cyield();
-
-    printf("what is wrong\n");
-
+void* func01()
+{
+    cwait(&semaforo);
+    printf("FUNC01 \n Thread02 - Contador do semaforo após solicitação de recurso: %d.\n", 7);
+    csignal(&semaforo);
+    printf("Contador do semaforo após liberação de recurso: %d.\n", 7);
     return 0;
+}
+
+void* func02()
+{
+    cwait(&semaforo);
+    printf("FUNC02 \n Thread03 - Contador do semaforo após solicitação de recurso: %d.\n", 7);
+    csignal(&semaforo);
+    printf("Contador do semaforo após liberação de recurso: %d.\n", 7);
+    return 0;
+}
+
+int main()
+{   int thread1,thread2,thread3;
+
+    if(csem_init(&semaforo, 1) == 0){
+        cwait(&semaforo);
+        thread1 = ccreate(func00, 0, 0);
+        thread2 = ccreate(func01, 0, 1);
+        thread3 = ccreate(func02, 0, 1);
+        cyield();
+        printf("Esta na main apos a criacao da thread1, thread2 e thread3.\n");
+        csignal(&semaforo);
+        cyield();
+        cyield();
+        return 0;
+    }
+    return -1; // Erro ao criar semáforo
 }
 
 /******************** FUNÇÕES PRINCIPAIS *************************************/
