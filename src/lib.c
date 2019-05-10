@@ -11,10 +11,11 @@
 #include "../include/cthread.h"
 #include "../include/cdata.h"
 
-#define ALGO_DE_ERRADO -1
+#define ALGO_DEU_ERRADO -1
 #define TUDO_CERTO 0
 #define ERRO_CRIACAO_FILA -1
 #define ERRO_INSERCAO_FILA -1
+#define ERRO_AO_DELETAR_DA_FILA -1;
 
 #define ALTA_PRIORIDADE 0
 #define MEDIA_PRIORIDADE 1
@@ -66,6 +67,7 @@ typedef struct s_WaitingTid {
     int waitingTid;
 } WaitingTid_t;
 
+
 /******************** FUNÇÕES PRINCIPAIS *************************************/
 
 int ccreate (void* (*start)(void*), void *arg, int prio) {
@@ -76,6 +78,7 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
         InitializeQueues();
         InitializeFinalContext();
         InitializeMainThread();
+        firstThread = 1;
     }
 
     // Cria e inicializa TCB_t
@@ -136,11 +139,12 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
  * prio = 0,1,2
  */
 int csetprio(int tid, int prio) {
-    if(prio >= 0 && prio<= 2){ //prioridades válidas
-         tid = NULL;
-         threadExecutando->prio = prio;
-
-         return TUDO_CERTO; // executou corretamente
+     if(prio >= 0 && prio<= 2){ //prioridades válidas
+         //tid = NULL;
+        if(threadExecutando->tid == tid){
+            threadExecutando->prio = prio;
+            return TUDO_CERTO; // executou corretamente
+        }         
     }
 
 	return ALGO_DEU_ERRADO;
@@ -295,26 +299,26 @@ int csignal(csem_t *sem) {
                 if(flag == 1){ //encontrou de alta prioridade
 
                     thread->state = PROCST_APTO;
-                    if(AppendFila2(&filaApto), thread) != 0){ //insere na fila nque tem todos os aptos
+                    if(AppendFila2((&filaApto), thread) != 0){ //insere na fila nque tem todos os aptos
                         printf(STRING_ERRO_INSERCAO_FILA_APTOS);
                         return ERRO_INSERCAO_FILA;
                     }
 
                     switch(i){
                         case ALTA_PRIORIDADE:
-                                if(AppendFila2(&filaAptoAltaPrioridade), thread) != 0){
+                                if(AppendFila2((&filaAptoAltaPrioridade), thread) != 0){
                                     printf(STRING_ERRO_INSERCAO_FILA_APTOS_ALTA_PRIORIDADE);
                                     return ERRO_INSERCAO_FILA;
                                 }
                                 break;
                         case MEDIA_PRIORIDADE:
-                                if(AppendFila2(&filaAptoMediaPrioridade), thread) != 0){
+                                if(AppendFila2((&filaAptoMediaPrioridade), thread) != 0){
                                     printf(STRING_ERRO_INSERCAO_FILA_APTOS_MEDIA_PRIORIDADE);
                                     return ERRO_INSERCAO_FILA;
                                 }
                                 break;
                         case BAIXA_PRIORIDADE:
-                                if(AppendFila2(&filaAptoBaixaPrioridade), thread) != 0){
+                                if(AppendFila2((&filaAptoBaixaPrioridade), thread) != 0){
                                     printf(STRING_ERRO_INSERCAO_FILA_APTOS_BAIXA_PRIORIDADE);
                                     return ERRO_INSERCAO_FILA;
                                 }
@@ -350,27 +354,31 @@ void *scheduleAfterYield(){
 
     TCB_t *threadEscalonada = NULL;
 
-    if( (FirstFila2(&filaAptoAltaPrioridade)) == 0) {  //Se fila de alta prioridade não está vazia
-           threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoAltaPrioridade); //Pega Primeiro
-           DeleteAtIteratorFila2(&filaAptoAltaPrioridade);  //Deleta ele da fila de aptos
-
-           }
-        else if((FirstFila2(&filaAptoMediaPrioridade)) == 0){
-            threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoMediaPrioridade); //Pega primeiro
-            DeleteAtIteratorFila2(&filaAptoMediaPrioridade);
-            }
-        else if((FirstFila2(&filaAptoBaixaPrioridade)) == 0){
-            threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoBaixaPrioridade);
-            DeleteAtIteratorFila2(&filaAptoBaixaPrioridade);
-            printf("pegou da baixa, id = %d \n", threadEscalonada->tid);
-            }
-    if(threadEscalonada==NULL)
-    printf("ERRO - ao selecionar thread dos aptos\n");
+    if( (FirstFila2(&filaAptoAltaPrioridade)) == 0) 
+    {  //Se fila de alta prioridade não está vazia
+        threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoAltaPrioridade); //Pega Primeiro
+        DeleteAtIteratorFila2(&filaAptoAltaPrioridade);  //Deleta ele da fila de aptos
+    }
+    else if((FirstFila2(&filaAptoMediaPrioridade)) == 0)
+    {
+        threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoMediaPrioridade); //Pega primeiro
+        DeleteAtIteratorFila2(&filaAptoMediaPrioridade);
+    }
+    else if((FirstFila2(&filaAptoBaixaPrioridade)) == 0)
+    {
+        threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoBaixaPrioridade);
+        DeleteAtIteratorFila2(&filaAptoBaixaPrioridade);
+        printf("pegou da baixa, id = %d \n", threadEscalonada->tid);
+    }
+    
+    if(threadEscalonada==NULL){
+        printf("ERRO - ao selecionar thread dos aptos\n");
+    }        
 
     threadExecutando = threadEscalonada;
     threadExecutando->state = PROCST_EXEC;
     setcontext(&threadExecutando->context);
-
+    return 0;
 }
 
 /** Função auxiliar 1
@@ -484,28 +492,25 @@ void Scheduler(){
     }
     else if(threadExecutando->state == PROCST_APTO)
     {
-        yeldingThread = threadExecutando;
+        //yeldingThread = threadExecutando;
 
         switch(threadExecutando->prio){
-	    case 0:
-		testeFila = AppendFila2(&filaAptoAltaPrioridade, (void *)(threadExecutando));
+            case 0:
+            testeFila = AppendFila2(&filaAptoAltaPrioridade, (void *)(threadExecutando));
 
-		break;
-	    case 1:
-		testeFila = AppendFila2(&filaAptoMediaPrioridade, (void *)(threadExecutando));
+            break;
+            case 1:
+            testeFila = AppendFila2(&filaAptoMediaPrioridade, (void *)(threadExecutando));
 
-		break;
-	    case 2:
-		testeFila = AppendFila2(&filaAptoBaixaPrioridade, (void *)(threadExecutando));
+            break;
+            case 2:
+            testeFila = AppendFila2(&filaAptoBaixaPrioridade, (void *)(threadExecutando));
 
-		break;
-	    default:
-		return -1;
-		break;
-    }
-        testeFila=1
-
-       // getcontext(&(threadExecutando->context));
+            break;
+            default:
+            //return -1;
+            break;
+        }
     }
     else if(threadExecutando->state == PROCST_TERMINO)
     {
@@ -513,7 +518,10 @@ void Scheduler(){
         free(threadExecutando);
         threadExecutando = NULL;
     }
-
+        
+    //testeFila=1
+    // getcontext(&(threadExecutando->context));
+    
     if(trocaContexto == 0)
     {
          trocaContexto = 1;
@@ -526,18 +534,18 @@ void Scheduler(){
         }
 
         //I >THINK< THE PRIORITIES SHOULD BE LIKE THIS
-       if( (FirstFila2(&filaAptoAltaPrioridade)) == 0)
-           { threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoAltaPrioridade);
-
-           }
+        if( (FirstFila2(&filaAptoAltaPrioridade)) == 0)
+        { 
+            threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoAltaPrioridade);
+        }
         else if((FirstFila2(&filaAptoMediaPrioridade)) == 0)
-            {threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoMediaPrioridade);
-
-            }
+        {
+            threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoMediaPrioridade);
+        }
         else
-            {threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoBaixaPrioridade);
-
-            }
+        {
+            threadEscalonada = (TCB_t *)GetAtIteratorFila2(&filaAptoBaixaPrioridade);
+        }
 
         // Lista vazia
         if(threadEscalonada == NULL){
@@ -562,9 +570,9 @@ void InitializeMainThread(){
 
     getcontext(contextoPrincipal);
 
-    ccreate((void*)CreateMainThread, contextoPrincipal, 2)
+    ccreate((void*)CreateMainThread, contextoPrincipal, 2);
 
-     testeFila = FirstFila2(&filaAptoBaixaPrioridade);
+    testeFila = FirstFila2(&filaAptoBaixaPrioridade);
 
     //posiciona o iterador no primeiro elemento da fila - FILA2
     if (testeFila) {

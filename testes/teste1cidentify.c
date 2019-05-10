@@ -1,6 +1,7 @@
 #include "../include/support.h"
 #include "../include/cthread.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 int main(int argc, char *argv[]) {
