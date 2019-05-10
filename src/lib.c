@@ -141,8 +141,9 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
 int csetprio(int tid, int prio) {
      if(prio >= 0 && prio<= 2){ //prioridades válidas
          //tid = NULL;
-        if(threadExecutando->tid == tid){
+        if(threadExecutando->tid == tid){            
             threadExecutando->prio = prio;
+            
             return TUDO_CERTO; // executou corretamente
         }         
     }
